@@ -3,12 +3,15 @@ import pygame
 from pygame.locals import KEYDOWN, QUIT, MOUSEBUTTONDOWN, K_SPACE, K_ESCAPE
 import sys
 from math import sqrt
+from random import choice
+from copy import deepcopy
+
 
 try:
     import psyco
     psyco.full()
 except ImportError:
-    pass
+    print "No Psyco"
 
 def ga_solve(file=None, gui=True, maxtime=0):
     if file==None:
@@ -16,12 +19,21 @@ def ga_solve(file=None, gui=True, maxtime=0):
         listeVilles = selector.collecting()
     else:
         listeVilles = loadCities(file)
-    print listeVilles
-
+        listToDraw = []
+        #Provisoire : pour faire une liste [[x,y],[x,y]...] pour le GUI
+        for a in listeVilles:
+            listTmp = []
+            listTmp.append(int(a[1]))
+            listTmp.append(int(a[2]))
+            listToDraw.append(listTmp)
+        print listToDraw
+        selector = Selector(listToDraw)
+        
+    
 
 
 class Selector:
-    def __init__(self):
+    def __init__(self,cities):
         self.screen_x = 500
         self.screen_y = 500
         self.city_color = [10,10,200] # blue
@@ -32,17 +44,20 @@ class Selector:
         pygame.display.set_caption('Selector')
         self.screen = pygame.display.get_surface()
         self.font = pygame.font.Font(None,30)
-        self.cities = []
+        self.cities = cities
         self.draw(self.cities)
+        
 
     def draw(self,positions):
 		self.screen.fill(0)
 		for pos in positions:
-			pygame.draw.circle(self.screen,self.city_color,pos,self.city_radius)
+		    pygame.draw.circle(self.screen,self.city_color,pos,self.city_radius)
 		text = self.font.render("Nombre: %i" % len(positions), True, self.font_color)
 		textRect = text.get_rect()
 		self.screen.blit(text, textRect)
 		pygame.display.flip()
+		pygame.draw.lines(self.screen,self.city_color,True,self.cities)
+        
 
     def collecting(self):
         collection = []
@@ -70,24 +85,62 @@ class City:
         self.name = name
    
     def __str__(self):
-        return self.name + " " + str(self.x) + " " + str(self.y)
+        return "Name :" + self.name + " X: " + str(self.x) + " Y: " + str(self.y)
         
     def distance(self,city):
-        deltaX=abs(self.x-city.x)
-        deltaY=abs(self.y-city.y)
+        deltaX = self.x-city.x
+        deltaY = self.y-city.y
+        #Maybe sqrt is useless
         return sqrt((deltaX**2)+(deltaY**2))
+    def __eq__(self,other):
+        return other.name == self.name
+    
 
         
 class Probleme:
-    def __init__(self,listCities):
-        self.cities = listCities
-        
+    def __init__(self):
+        self.cities = []
+        self.citiesToVisit = []
+        self.solution = ""
+
     def getNumberCity(self):
         return len(self.cities)
         
+    #Creer une liste de city
+    def createProbleme(self,listCities):  
+        for element in listCities:
+            name = element[0]
+            x = int(element[1])
+            y = int(element[2])
+            self.cities.append(City(name,x,y))
+    
     def __str__(self):
         for c in self.cities:
             print c
+    #cherche la distance la plus petite entre city et les villes de cititesToVisit
+    def searchMinusDistance(self,city,citiesToVisit):
+        dist = float('inf')    
+        citiyTmp = None
+        for c in citiesToVisit:
+            distTmp = city.distance(c)
+            if city.distance(c)<dist:
+                dist = distTmp
+                citiyTmp = c
+        citiesToVisit.remove(c)
+        return citiyTmp   
+            
+    #Cherche une solution en partant d'un point au hasard
+    def findSolutionByRandom(self):
+        self.citiesToVisit = self.cities
+        nextCity = choice(self.citiesToVisit)
+        self.citiesToVisit.remove(nextCity)
+        self.solution += nextCity.name
+        while not len(self.citiesToVisit)<=0:
+            nextCity = self.searchMinusDistance(nextCity,deepcopy(self.citiesToVisit))
+            self.citiesToVisit.remove(nextCity)
+            self.solution += nextCity.name     
+        
+        
 class Solution:
     def __init__(self, probleme):
         self.probleme = probleme
@@ -100,17 +153,17 @@ def loadCities(filename):
     data = open(filename,'r')
     return [l.split() for l in data]
     
-def createProbleme(listCities):  
-    c = []
-    for element in listCities:
-        name = element[0]
-        x = int(element[1])
-        y = int(element[2])
-        c.append(City(name,x,y))
-    return Probleme(c)
+
             
 
 if __name__ == "__main__":
     #main
-    ga_solve()
+    #ga_solve(sys.argv[1])
+    
+    cities = loadCities(sys.argv[1])
+    prob = Probleme()
+    prob.createProbleme(cities)
+    prob.findSolutionByRandom()
+    print prob.solution
+    
 
