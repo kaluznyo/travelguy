@@ -1,6 +1,7 @@
 import pygame
 from pygame.locals import KEYDOWN, QUIT, MOUSEBUTTONDOWN, K_SPACE, K_ESCAPE
 import sys
+import time
 from math import sqrt
 from random import choice
 from random import random
@@ -15,26 +16,33 @@ except ImportError:
     print "No Psyco"
 
 def ga_solve(file=None, gui=True, maxtime=0):
+    selector = Selector()
     if file==None:
-        selector = Selector()
         listeVilles = selector.collecting()
-
+    else:
         listeVilles = loadCities(file)
-        listToDraw = []
-        #Provisoire : pour faire une liste [[x,y],[x,y]...] pour le GUI
-        for a in listeVilles:
-            listTmp = []
-            listTmp.append(int(a[1]))
-            listTmp.append(int(a[2]))
-            listToDraw.append(listTmp)
-        print listToDraw
-        selector = Selector(listToDraw)
-        
-    
-
+    listToDraw = map(lambda x: [int(x[1]),int(x[2])],listeVilles)
+    selector.draw(listToDraw)
+    #print listToDraw
+    prob = Probleme()
+    prob.createProbleme(listeVilles)
+    pop = Population(prob.findSolutions(20))
+    for p in pop.listIndividu:
+        print p
+    print "Before Mutation .."
+    i=0
+    while i<10:
+        pop.crossPopulation()
+        pop.muteAllPopulation(1)
+        pop.calculateAllDistance()
+        pop.selectPopulation()
+        print pop.listIndividu[0].totalDistance
+        if gui:
+            selector.drawSolution(pop.listIndividu[0].solution)
+        i=i+1
 
 class Selector:
-    def __init__(self,cities):
+    def __init__(self):
         self.screen_x = 500
         self.screen_y = 500
         self.city_color = [10,10,200] # blue
@@ -45,7 +53,7 @@ class Selector:
         pygame.display.set_caption('Selector')
         self.screen = pygame.display.get_surface()
         self.font = pygame.font.Font(None,30)
-        self.cities = cities
+        self.cities = []
         self.draw(self.cities)
         
 
@@ -57,7 +65,15 @@ class Selector:
 		textRect = text.get_rect()
 		self.screen.blit(text, textRect)
 		pygame.display.flip()
-		pygame.draw.lines(self.screen,self.city_color,True,self.cities)
+		#pygame.draw.lines(self.screen,self.city_color,True,self.cities)
+
+    def drawSolution(self,solution):
+        position = map(lambda x: x.getPosition(),solution)
+        self.draw(self.cities)
+        pygame.draw.lines(self.screen,self.city_color,True,position)
+        pygame.display.flip()
+        time.sleep(3)
+
         
 
     def collecting(self):
@@ -99,6 +115,9 @@ class City:
     def __eq__(self,other):
         return other.name == self.name
     
+    def getPosition(self):
+        return [self.x,self.y]
+    
 
         
 class Probleme:
@@ -126,7 +145,7 @@ class Probleme:
             
     #Cherche la distance la plus petite entre city et les villes de cititesToVisit
     def searchSmallerDistance(self,city,citiesToVisit):
-        dist = float('inf')    
+        dist = float('10000000000')
         for c in citiesToVisit:
             distTmp = city.distance(c)
             if distTmp<dist:
@@ -176,6 +195,7 @@ class Solution:
         for c in self.solution:
             print c
         return str(self.totalDistance)
+    
 
     def mutate(self):
         #choice marche pas ... pk ?...
@@ -283,23 +303,12 @@ def loadCities(filename):
 
 if __name__ == "__main__":
     #main
-    #ga_solve(sys.argv[1])
+    if len(sys.argv)>1:
+        ga_solve(sys.argv[1])
+    else:
+        ga_solve()
+
     
-    cities = loadCities(sys.argv[1])
-    prob = Probleme()
-    prob.createProbleme(cities)
-    pop = Population(prob.findSolutions(20))
-    for p in pop.listIndividu:
-        print p
-    print "Before Mutation .."
-    i=0
-    while i<10:
-        pop.crossPopulation()
-        pop.muteAllPopulation(1)
-        pop.calculateAllDistance()
-        pop.selectPopulation()
-        print pop.listIndividu[0].totalDistance
-        i=i+1
         
     #TODO Refaire crossPopulation pour tenir compte de la distance (voir PDF prof)
     #TODO methode pour recalculer tout le parcoure
