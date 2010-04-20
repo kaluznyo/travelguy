@@ -31,8 +31,9 @@ def ga_solve(file=None, gui=True, maxtime=0):
     for p in pop.listIndividu:
         print p
     print "Before Mutation .."
+    montemps=time.time()
     i=0
-    while i<10:
+    while ((time.time()-montemps) < maxtime) or (maxtime==0 and i<10):
         pop.crossPopulation()
         pop.muteAllPopulation(1)
         pop.calculateAllDistance()
@@ -302,7 +303,7 @@ def loadCities(filename):
 def createOptionsParser():
     parser = OptionParser()
     parser.add_option("--nogui", action="store_false", dest="gui", default="True")
-    parser.add_option("--maxtime", dest="maxtime", type="int")
+    parser.add_option("--maxtime", dest="maxtime", type="int", default=0)
     (options, sys.argv) = parser.parse_args()
     return options
     
