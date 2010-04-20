@@ -2,6 +2,7 @@ import pygame
 from pygame.locals import KEYDOWN, QUIT, MOUSEBUTTONDOWN, K_SPACE, K_ESCAPE
 import sys
 import time
+from optparse import OptionParser
 from math import sqrt
 from random import choice
 from random import random
@@ -247,10 +248,10 @@ class Population:
                 parent2 = self.listIndividu[i+1]
             nbCity = len(self.listIndividu[i].solution)
             for dumb in xrange(2):
-                j=0
+                j=1
                 new = []       
                 new.append(choice(self.listIndividu[i].solution))              
-                while j<nbCity-1:
+                while j<nbCity:
                     distParent1 = new[len(new)-1].distance(parent1.solution[j])
                     distParent2 = new[len(new)-1].distance(parent2.solution[j])
                     if distParent1<distParent2 and (parent1.solution[j] not in new):
@@ -297,16 +298,25 @@ class Population:
 def loadCities(filename):
     data = open(filename,'r')
     return [l.split() for l in data]
+
+def createOptionsParser():
+    parser = OptionParser()
+    parser.add_option("--nogui", action="store_false", dest="gui", default="True")
+    parser.add_option("--maxtime", dest="maxtime", type="int")
+    (options, sys.argv) = parser.parse_args()
+    return options
     
 
             
 
 if __name__ == "__main__":
     #main
-    if len(sys.argv)>1:
-        ga_solve(sys.argv[1])
-    else:
-        ga_solve()
+    
+    inputFile = None
+    options = createOptionsParser()
+    if len(sys.argv)>0:
+        inputFile=sys.argv[0]
+    ga_solve(inputFile,options.gui,options.maxtime)
 
     
         
