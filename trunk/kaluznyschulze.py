@@ -1,8 +1,6 @@
-import pygame
-from pygame.locals import KEYDOWN, QUIT, MOUSEBUTTONDOWN, K_SPACE, K_ESCAPE
+#import pygame
+#from pygame.locals import KEYDOWN, QUIT, MOUSEBUTTONDOWN, K_SPACE, K_ESCAPE
 import sys
-import time
-from optparse import OptionParser
 from math import sqrt
 from random import choice
 from random import random
@@ -17,34 +15,26 @@ except ImportError:
     print "No Psyco"
 
 def ga_solve(file=None, gui=True, maxtime=0):
-    selector = Selector()
     if file==None:
+        selector = Selector()
         listeVilles = selector.collecting()
-    else:
+
         listeVilles = loadCities(file)
-    listToDraw = map(lambda x: [int(x[1]),int(x[2])],listeVilles)
-    selector.draw(listToDraw)
-    #print listToDraw
-    prob = Probleme()
-    prob.createProbleme(listeVilles)
-    pop = Population(prob.findSolutions(20))
-    for p in pop.listIndividu:
-        print p
-    print "Before Mutation .."
-    montemps=time.time()
-    i=0
-    while ((time.time()-montemps) < maxtime) or (maxtime==0 and i<10):
-        pop.crossPopulation()
-        pop.muteAllPopulation(1)
-        pop.calculateAllDistance()
-        pop.selectPopulation()
-        print pop.listIndividu[0].totalDistance
-        if gui:
-            selector.drawSolution(pop.listIndividu[0].solution)
-        i=i+1
+        listToDraw = []
+        #Provisoire : pour faire une liste [[x,y],[x,y]...] pour le GUI
+        for a in listeVilles:
+            listTmp = []
+            listTmp.append(int(a[1]))
+            listTmp.append(int(a[2]))
+            listToDraw.append(listTmp)
+        print listToDraw
+        selector = Selector(listToDraw)
+        
+    
+
 
 class Selector:
-    def __init__(self):
+    def __init__(self,cities):
         self.screen_x = 500
         self.screen_y = 500
         self.city_color = [10,10,200] # blue
@@ -55,7 +45,7 @@ class Selector:
         pygame.display.set_caption('Selector')
         self.screen = pygame.display.get_surface()
         self.font = pygame.font.Font(None,30)
-        self.cities = []
+        self.cities = cities
         self.draw(self.cities)
         
 
@@ -67,15 +57,7 @@ class Selector:
 		textRect = text.get_rect()
 		self.screen.blit(text, textRect)
 		pygame.display.flip()
-		#pygame.draw.lines(self.screen,self.city_color,True,self.cities)
-
-    def drawSolution(self,solution):
-        position = map(lambda x: x.getPosition(),solution)
-        self.draw(self.cities)
-        pygame.draw.lines(self.screen,self.city_color,True,position)
-        pygame.display.flip()
-        time.sleep(3)
-
+		pygame.draw.lines(self.screen,self.city_color,True,self.cities)
         
 
     def collecting(self):
@@ -117,9 +99,6 @@ class City:
     def __eq__(self,other):
         return other.name == self.name
     
-    def getPosition(self):
-        return [self.x,self.y]
-    
 
         
 class Probleme:
@@ -147,7 +126,7 @@ class Probleme:
             
     #Cherche la distance la plus petite entre city et les villes de cititesToVisit
     def searchSmallerDistance(self,city,citiesToVisit):
-        dist = float('10000000000')
+        dist = float('inf')    
         for c in citiesToVisit:
             distTmp = city.distance(c)
             if distTmp<dist:
@@ -197,10 +176,8 @@ class Solution:
         for c in self.solution:
             print c
         return str(self.totalDistance)
-    
 
     def mutate(self):
-        #choice marche pas ... pk ?...
         index =  int(random() * len(self.solution))
         index2 =  int(random() * len(self.solution))   
         cityToMove = self.solution[index]
@@ -208,7 +185,8 @@ class Solution:
        
         self.solution[int(index)] = cityToMove2
         self.solution[int(index2)] = cityToMove
-    
+        
+        
     def mutateSolution(self,nbMutation):
         #improve. range...
         #TODO recalculate distance..
@@ -224,10 +202,7 @@ class Solution:
             i=i+1
         #Ajout du premier jusque a la fin
         self.totalDistance=self.totalDistance+self.solution[0].distance(self.solution[len(self.solution)-1])
-
-        
-        
-        
+       
         
         
 class Population:
@@ -242,50 +217,49 @@ class Population:
         i=0
         newList = []
         while i<len(self.listIndividu):
-            parent1 = self.listIndividu[i]
+            parent1 = deepcopy(self.listIndividu[i])
             if(i+1==len(self.listIndividu)):
-                parent2 = self.listIndividu[0]
+                parent2 = deepcopy(self.listIndividu[0])
             else:
-                parent2 = self.listIndividu[i+1]
+                parent2 = deepcopy(self.listIndividu[i+1])
             nbCity = len(self.listIndividu[i].solution)
             for dumb in xrange(2):
                 j=1
                 new = []       
-                new.append(choice(self.listIndividu[i].solution))              
+                new.append(deepcopy(choice(self.listIndividu[i].solution)))  
+                parent1.calculateTotalDistance()
+                parent2.calculateTotalDistance()           
                 while j<nbCity:
                     distParent1 = new[len(new)-1].distance(parent1.solution[j])
                     distParent2 = new[len(new)-1].distance(parent2.solution[j])
-                    if distParent1<distParent2 and (parent1.solution[j] not in new):
-                        new.append(parent1.solution[j])
+                    if distParent1<=distParent2 and (parent1.solution[j] not in new):
+                        new.append(deepcopy(parent1.solution[j]))
                     elif distParent1>distParent2 and (parent2.solution[j] not in new):
-                        new.append(parent2.solution[j])
+                        new.append(deepcopy(parent2.solution[j]))
                     else:
-                        tmp = choice(self.listIndividu[i].solution)
+                        tmp = deepcopy(choice(self.listIndividu[i].solution))
                         while (tmp  in new):
-                            tmp = choice(self.listIndividu[i].solution)
-                            #print tmp
-                            #print "---------"
-                            #for h in self.listIndividu[i].solution:
-                             #   print h
-                        new.append(tmp)
+                            tmp = deepcopy(choice(self.listIndividu[i].solution))
+                        new.append(deepcopy(tmp))
                     j = j + 1
-                newList.append(Solution(new))            
+ 
+                s= Solution(deepcopy(new))
+                s.calculateTotalDistance()
+
+                newList.append(Solution(deepcopy(new)))      
             i=i+1
         self.listIndividu = []
-        self.listIndividu = newList
+        self.listIndividu = deepcopy(newList)
+
             
     def selectPopulation(self):
-        self.listIndividu = sorted(self.listIndividu, key=lambda sol: sol.totalDistance)   
-        self.listIndividu = self.listIndividu[:(len(self.listIndividu))/2]
+        self.listIndividu = deepcopy(sorted(self.listIndividu, key=lambda sol: sol.totalDistance))
+        self.listIndividu = deepcopy(self.listIndividu[:(len(self.listIndividu))/2])
         # middle = len(self.listIndividu)%3
         #  tmpList = self.listIndividu[:middle]
         #  for dump in xrange(len(self.listIndividu)/2-middle):
         #      tmpList.append(choice(self.listIndividu[middle:]))
         #  self.listIndividu = tmpList
-        print "------"
-        for e in self.listIndividu:
-            print e.totalDistance
-        print "------"
         
         
         
@@ -299,31 +273,37 @@ class Population:
 def loadCities(filename):
     data = open(filename,'r')
     return [l.split() for l in data]
-
-def createOptionsParser():
-    parser = OptionParser()
-    parser.add_option("--nogui", action="store_false", dest="gui", default="True")
-    parser.add_option("--maxtime", dest="maxtime", type="int", default=0)
-    (options, sys.argv) = parser.parse_args()
-    return options
     
 
             
 
 if __name__ == "__main__":
     #main
+    #ga_solve(sys.argv[1])
     
-    inputFile = None
-    options = createOptionsParser()
-    if len(sys.argv)>0:
-        inputFile=sys.argv[0]
-    ga_solve(inputFile,options.gui,options.maxtime)
-
-    
+    cities = loadCities(sys.argv[1])
+    prob = Probleme()
+    prob.createProbleme(cities)
+    pop = Population(prob.findSolutions(8))
+    pop.selectPopulation()
+    i=0
+    dist = float('inf')
+    while i<10000:
+        print "START"
+        pop.crossPopulation()
+        #pop.muteAllPopulation(0)
+        pop.calculateAllDistance()
+        print "STOP"
+        pop.selectPopulation()
+        for p in pop.listIndividu:
+            print p.totalDistance
         
-    #TODO Refaire crossPopulation pour tenir compte de la distance (voir PDF prof)
-    #TODO methode pour recalculer tout le parcoure
-    #TODO selection
+        #print pop.listIndividu[0].totalDistance
+        if(pop.listIndividu[0].totalDistance)<dist:
+            dist = pop.listIndividu[0].totalDistance
+        i=i+1
+    print dist
+        
     #TODO GUI
     #TODO methode crossPopulation totalement bidouille....
     
